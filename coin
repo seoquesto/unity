@@ -1,0 +1,64 @@
+public class CoinScript : MonoBehaviour {
+    //SPEED ACTION
+    public float _speed;
+    public int CoinToAdd = 0;
+
+    float percente;
+    bool _isCoins = false;
+    bool _hudAnim = false;
+    SpriteRenderer _renderer;
+    Camera _camera;
+    Vector2 _cameraPoint;
+
+    void Start() {
+        //GET SPRITE REDNERER
+        _renderer = transform.GetChild(0).GetComponent<SpriteRenderer>();
+        _camera = Camera.main;
+    }
+
+    void Update() {
+        //IS COINS
+        if(!_isCoins) return;
+        float x = _camera.transform.position.x - _camera.orthographicSize * ( (float)Screen.width / Screen.height ) + _camera.orthographicSize * ( (float)Screen.width / Screen.height ) * 15 / 100;
+        float y = _camera.transform.position.y + _camera.orthographicSize - ( ( ( _camera.orthographicSize * 15 ) / 100 ) );
+        _cameraPoint = new Vector2(x, y);
+        float distance = Vector2.Distance(transform.position, _cameraPoint);
+        percente += Time.deltaTime * _speed / distance;
+        //POSITION
+        transform.position = new Vector2(Mathf.Lerp(transform.position.x, _cameraPoint.x, percente),
+                                                   Mathf.Lerp(transform.position.y, _cameraPoint.y, percente));
+        //LOCAL SCALE
+        transform.localScale = new Vector2(
+        Mathf.Lerp(transform.localScale.x, 0.01f, percente * percente),
+        Mathf.Lerp(transform.localScale.y, 0.01f, percente * percente));
+        //COLOR
+        _renderer.color = Color.Lerp(_renderer.color, new Color(1f, 1f, 1f, 0f), percente * percente);
+        //COIN TEXT HUD ANIM
+        if(distance <= 3f && !_hudAnim){
+            CoinsManager.StartAnim();
+            _hudAnim = true;
+        }
+        //DISTANCE TO DESTROY
+        if(distance <= 0.1f) 
+            Destroy(this.gameObject);
+                                                     
+    }
+    //Collision with PLAYER
+    void OnTriggerEnter2D(Collider2D other) {
+        if(_isCoins) return;
+        if(other.tag == "Player") {
+            _isCoins = true;
+            CoinsManager.AddCoin(CoinToAdd);
+        }
+    }
+#if UNITY_EDITOR
+    //GIZMOS
+    void OnDrawGizmos() {
+        if(!Application.isPlaying) return;
+        if(!_isCoins) return;
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawLine(transform.position, _cameraPoint);
+        Gizmos.DrawSphere(_cameraPoint, 0.25f);
+    }
+#endif           
+}
