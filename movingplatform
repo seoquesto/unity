@@ -1,0 +1,122 @@
+public class MovingPlatform : RaycastController2D
+{            
+    public LayerMask _collisionLayerMask;
+    public float _speedPlatform;
+    public Vector3[] _localPoint;
+
+    private Vector3[] _globalPoint;
+    private float percente;
+    private int fromIndex;
+    //START
+    protected override void Start() {
+        base.Start();
+        if(_localPoint.Length <= 1) return;
+        //NEW ARRAY VECTOR GLOBALPOINT
+        _globalPoint = new Vector3[_localPoint.Length];
+        //CREATE GLOBALPOINT ON START
+        for(int i = 0; i < _localPoint.Length; i++) {
+            _globalPoint[i] = _localPoint[i] + transform.position;
+        }
+    }
+    //GIZMOS DRAW ROUND && LINE
+    void OnDrawGizmos() {
+        Gizmos.color = Color.green;
+        if(_localPoint.Length <= 1) return;
+        for(int i = 0; i < _localPoint.Length; i++) {
+            Gizmos.DrawSphere(Application.isPlaying ? _globalPoint[i] : _localPoint[i] + transform.position, 0.1f);
+            if(i >= _localPoint.Length - 1) return;
+            Gizmos.DrawLine(Application.isPlaying ? _globalPoint[i] : _localPoint[i] + transform.position, Application.isPlaying ? _globalPoint[i+1] : _localPoint[i+1] + transform.position);
+        }
+    }
+    //UPDATE
+    void Update() {
+        UpdateRayOrigin();
+        Vector3 _velocity = UpdateVector();
+        CalculateTransform(_velocity);
+        transform.Translate(_velocity);
+    }
+    //UPDATE VECTOR 
+    Vector3 UpdateVector() {
+        //NEW INDEX
+        int toIndex = fromIndex + 1;
+        //DISTANCE BETWEEN VECTOR
+        float distance = Vector3.Distance(_globalPoint[fromIndex], _globalPoint[toIndex]);
+        //PERCENTE TO NEXT PONT MAX 1
+        percente += Time.deltaTime * _speedPlatform / distance ;
+        //NEW POS
+        Vector3 pos = Vector3.Lerp(_globalPoint[fromIndex], _globalPoint[toIndex], percente);
+        //NEW CHANGE GLOBAL VECTOR
+        if(percente >= 1) {
+            percente = 0;
+            fromIndex++;
+             //reverse ARRAY
+            if(toIndex >= _localPoint.Length - 1) {
+                fromIndex = 0;
+                System.Array.Reverse(_globalPoint);
+            }
+        }
+        //RETURN NEW POSITION
+        return pos - transform.position;         
+    }
+    void CalculateTransform(Vector3 _velocity) {
+        //DIRECTION
+        float dirX = Mathf.Sign(_velocity.x);
+        float dirY = Mathf.Sign(_velocity.y);
+        
+        //TRASFORM PLAYER TO UP    
+        if(_velocity.y != 0) {
+            //RAYLENGHT
+            float rayLenght = Mathf.Abs(_velocity.y) + _skinWidth; 
+            //DRAW RAYCAST
+            for(int i = 0; i < _totalVerticalCount; i++) {
+                Vector3 orgin = dirY == 1 ? _origin._topLeft : _origin._bottomLeft;
+                orgin += Vector3.right * _verticalSpacing * i;
+                RaycastHit2D hit = Physics2D.Raycast(orgin, Vector2.up * dirY, rayLenght, _collisionLayerMask);
+                Debug.DrawRay(orgin, Vector2.up * dirY * rayLenght, _lackColor);
+                //HIT
+                if(hit) {
+                    Debug.DrawRay(orgin, Vector2.up * dirY * rayLenght, _hitColor);     
+                    hit.transform.Translate(new Vector3(_velocity.x, _velocity.y));
+                    break;
+                }
+            }
+        }
+
+        //TRASFORM PLAYER TO RIGHT LEFT    
+        if(_velocity.x != 0) {
+            //RAYLENGHT
+            float rayLenght = Mathf.Abs(_velocity.x) + _skinWidth;
+            //DRAW RAYCAST
+            for(int i = 0; i < _totalHorizontalCount; i++) {
+                Vector3 orgin = dirX == -1 ? _origin._bottomLeft : _origin._bottomRight;
+                orgin += Vector3.up * _horizontalSpacing * i;
+                RaycastHit2D hit = Physics2D.Raycast(orgin, Vector2.right * dirX, rayLenght, _collisionLayerMask);
+                Debug.DrawRay(orgin, Vector2.right * dirX * rayLenght, _lackColor);
+                //HIT
+                if(hit) {
+                    Debug.DrawRay(orgin, Vector2.right * dirX * rayLenght, _hitColor);
+                    hit.transform.Translate(new Vector3(_velocity.x, _velocity.y));
+                    break;
+                }
+            }
+        }
+
+        //TRASFORM PLAYER TO DOWN
+        if(_velocity.y < 0 || _velocity.y == 0 && _velocity.x !=0 ) {
+            //RAYLENGHT
+            float rayLenght = Mathf.Abs(_velocity.y) + _skinWidth * 2;
+            //DRAW RAYCAST
+            for(int i = 0; i < _totalVerticalCount; i++) {
+                Vector3 orgin = _origin._topLeft + (Vector2.right * _verticalSpacing * i);
+                RaycastHit2D hit = Physics2D.Raycast(orgin, Vector2.up, rayLenght, _collisionLayerMask);
+                Debug.DrawRay(orgin, Vector2.up * rayLenght, _lackColor);
+                //HIT
+                if(hit) {             
+                    Debug.DrawRay(orgin, Vector2.up * rayLenght, _hitColor);
+                    hit.transform.Translate(new Vector3(_velocity.x, _velocity.y));
+                    break;
+                }
+            }
+        }
+    }
+}
