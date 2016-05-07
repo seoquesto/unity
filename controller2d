@@ -1,0 +1,138 @@
+public class CharacterController2D : RaycastController2D
+{
+    public StateController _state;
+    public LayerMask _collisionLayer;
+    public float _maxSlopeAngleUp = 80f;
+    public float _maxSlopeAngleDown = 80f;
+    private Vector2 _Input { get; set; }
+    //START
+    protected override void Start() {
+        base.Start();
+        _state.dirX = 1f;
+    }
+    //INPUT FROM PLAYER SCRIPT
+    public void Input(Vector2 input) {
+        _Input = input;
+    }
+    //MOVE FROM PLAYER2D AND MOVINGPLATFORM
+    public void Move(Vector3 _velocity) {
+        _state.Reset();
+        UpdateRayOrigin();
+        if(_velocity.y < 0) { ClimbingDown(ref _velocity); }
+        if(_velocity.x !=0 )_state.dirX = (int)Mathf.Sign(_velocity.x);
+        CollisionHorizontal(ref _velocity); 
+        if(_velocity.y !=0 ) { CollisionVertical(ref _velocity); }
+        transform.Translate(_velocity);
+    }
+    //VERTICAL COLLISION UP AND DOWN
+    void CollisionVertical(ref Vector3 _velocity) {
+        float dirY = Mathf.Sign(_velocity.y);
+        float rayLenght = Mathf.Abs(_velocity.y) + _skinWidth;
+        //CREATE RAYCAST HIT
+        for(int i = 0; i < _totalVerticalCount; i++) {
+            Vector3 orgin = dirY == -1 ? _origin._bottomLeft : _origin._topLeft;
+            orgin += Vector3.right * _verticalSpacing * i;
+            RaycastHit2D hit = Physics2D.Raycast(orgin, Vector2.up * dirY, rayLenght, _collisionLayer);
+            Debug.DrawRay(orgin, Vector2.up * dirY * rayLenght, _lackColor);
+            //HIT INSTRUCTION
+            if(hit) {             
+                Debug.DrawRay(orgin, Vector2.up * dirY * rayLenght, _hitColor);
+                if(_Input.y == -1 && hit.transform.tag == "MovingPlatform") continue;
+                if(dirY == 1 && hit.transform.tag == "MovingPlatform") continue;
+                _velocity.y = ( hit.distance - _skinWidth ) * dirY;
+                 rayLenght = hit.distance;
+                //SET STATE
+                _state.CollisionBelow = dirY == -1;
+                _state.CollisionAbow = dirY == 1;
+            }
+        }
+    }
+    //COLLISION HORIZONTAL LEFT RIGHT
+    void CollisionHorizontal(ref Vector3 _velocity) {
+        float dirX = _state.dirX;
+        float rayLenght = Mathf.Abs(_velocity.x) + _skinWidth;
+        if(Mathf.Abs(_velocity.x) < 0.001f) rayLenght = 2f * _skinWidth;
+        //CREATE RAYCAST HIT    
+        for(int i = 0; i < _totalHorizontalCount; i++) {
+            Vector3 orgin = dirX == -1 ? _origin._bottomLeft : _origin._bottomRight;
+            orgin += Vector3.up * _horizontalSpacing * i;
+            RaycastHit2D hit = Physics2D.Raycast(orgin, Vector2.right * dirX, rayLenght, _collisionLayer);
+            Debug.DrawRay(orgin, Vector2.right * dirX * rayLenght, _lackColor);
+            //HIT INSTRUCTION
+            if(hit) {
+                Debug.DrawRay(orgin, Vector2.right * dirX * rayLenght, _hitColor);
+                if(hit.distance == 0) continue;
+                //ANGLE
+                float angle = Vector3.Angle(hit.normal, Vector3.up);
+                //GIVE PARAMETERS TO CLIMBINGUP METHOD
+                if(angle != 0 && angle <=_maxSlopeAngleUp && i == 0) {
+                    ClimbingUp(ref _velocity, angle);
+                }
+                //NORMAL MOVE
+                if(angle > _maxSlopeAngleUp || !_state.ClimbingUp) {
+                    _velocity.x = ( hit.distance - _skinWidth ) * dirX;
+                    rayLenght = hit.distance;
+                    _state.CollisionLeft = dirX == -1;
+                    _state.CollisionRight = dirX == 1;
+                }
+            }
+        }
+    }
+    //CLIMBING UP
+    void ClimbingUp(ref Vector3 _velocity, float angle) {
+        float dirX = Mathf.Sign(_velocity.x);
+        float moveDistance = Mathf.Abs(_velocity.x);
+        //HOW MOVE
+        if(_velocity.y <= Mathf.Sign(angle *Mathf.Deg2Rad) * moveDistance) {
+            _velocity.y = Mathf.Sin(angle * Mathf.Deg2Rad) * moveDistance;
+            _velocity.x = Mathf.Cos(angle * Mathf.Deg2Rad) * moveDistance * dirX;
+            //STATE
+            _state.CollisionBelow = true;
+            _state.ClimbingUp = true;
+            _state.SlopeAngle = angle;
+        }
+        
+    }
+
+    void ClimbingDown(ref Vector3 _velocity) {
+        float dirX = Mathf.Sign(_velocity.x);
+        float moveDistance = Mathf.Abs(_velocity.x);
+
+        Vector3 oring = ( dirX == -1 ) ? _origin._bottomRight:_origin._bottomLeft;
+        RaycastHit2D hit = Physics2D.Raycast(oring, Vector3.down, Mathf.Infinity, _collisionLayer);
+        Debug.DrawRay(oring, Vector2.down * _skinWidth * 2, Color.blue);
+
+        if(hit) {
+            float angle = Vector2.Angle(hit.normal, Vector2.up);
+            if(angle !=0 && angle <= _maxSlopeAngleDown) {
+                if(dirX == Mathf.Sign(hit.normal.x)) {
+                    if((hit.distance - _skinWidth) <= 0.3f) {
+                        _velocity.y -= Mathf.Sin(angle * Mathf.Deg2Rad) * moveDistance;
+                        _velocity.x = Mathf.Cos(angle * Mathf.Deg2Rad) * moveDistance * dirX;
+                        //STATE
+                        _state.CollisionBelow = true;
+                        _state.ClimbingDown = true;
+                        _state.SlopeAngle = angle;
+                    }
+                }
+            }
+        }                
+    }
+    //STATE PARAMETERS
+    public struct StateController
+    {
+        public bool CollisionAbow { get; set; }
+        public bool CollisionBelow { get; set; }
+        public bool CollisionRight { get; set; }
+        public bool CollisionLeft { get; set; }
+        public bool ClimbingUp { get; set; }    
+        public bool ClimbingDown { get; set; }
+        public float SlopeAngle { get; set; }
+        public float dirX { get; set; }
+                            
+        public void Reset() {
+            CollisionAbow = CollisionBelow = CollisionRight = CollisionLeft = ClimbingUp = ClimbingDown = false;
+            SlopeAngle = 0f;
+        }
+    }
+}
