@@ -1,0 +1,140 @@
+[RequireComponent(typeof(CharacterController2D))]
+public class Player2D : Player2DParameters {
+    public LayerMask _coinsLayer;
+    private Animator _anim;
+    bool goToLeft;
+    bool playerFall;
+    //START
+    void Start () {
+	    _controller = GetComponent<CharacterController2D>();
+        _anim = GetComponent<Animator>();
+        LevelManager.AddCheckPoint(transform.position);
+        Gravitation();
+        AddLifeHealth(_maxLife, _maxHealth);
+	}
+    //INITIALIZE GRAVITATION
+    void Gravitation() {
+        _gravity = Mathf.Abs(2 * _playerJumpHigh) / ( Mathf.Pow(_playerJumpTime, 2) );
+        _jumpVelocity = Mathf.Abs(_gravity) * _playerJumpTime;
+    }
+    //UPDATE                                                          
+    void Update () {
+        //DEATH
+        if(_playerIsDeath) return;
+        //
+        Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+        if(_controller._state.CollisionBelow || _controller._state.CollisionAbow) { _velocity.y = 0; }
+        JumpMethod(ref input);
+        MoveMethod();
+        _controller.Input(input);
+        Anim();
+                        
+	}
+    void Anim() {
+        goToLeft = _velocity.x <= -1;
+        playerFall = _velocity.y <= -10f;
+        Debug.Log(_velocity.y);
+
+        _anim.SetBool("GoToLeft", goToLeft);
+        _anim.SetBool("PlayerFall", playerFall);
+        _anim.SetFloat("Speed", Mathf.Abs(_velocity.x));
+       
+
+    }
+    public void TakeHealth(int health) {
+        _health -= health;
+        Debug.Log("HEALTH: " + _health + " MAX HEALTH: " + _maxHealth);
+        if(_health <= 0 &&_playerIsDeath == false) {
+            _life--;
+            Debug.Log("LIFE: " + _life + " MAX LIFE: " + _maxLife);
+            _playerIsDeath = true;
+            StartCoroutine("RespawnPlayer");
+            
+        }
+    }
+    //JUMP METHOD
+    void JumpMethod(ref Vector2 input) {
+        bool wallSlide = false;
+        //COLLISION DIRECTION
+        float dirWall = _controller._state.CollisionLeft ? -1f : 1f;
+        //WALLSLIDE 
+        if(( !_controller._state.CollisionBelow ) && ( _controller._state.CollisionLeft || _controller._state.CollisionRight ) && _velocity.y <= 0) {
+            wallSlide = true;
+            //SLOW SLIDE WALL
+            if(_velocity.y <= -wallSildeSpeed) {
+                _velocity.y = -wallSildeSpeed;
+            }
+        }
+        //PRESS SPACING
+        if(Input.GetKeyDown(KeyCode.Space)) {
+            //WALLSLIDE
+            if(wallSlide) {
+                //WALL OF
+                if(dirWall == input.x) {
+                    _velocity.x = _wallOffJump.x * -dirWall;
+                    _velocity.y = _wallOffJump.y;
+                    _waitWall = _wallJumpTime / 3;
+                }
+                //WALL LEAP
+                if(input.x == 0f) {
+                    _velocity.x = _wallLeapJump.x * -dirWall;
+                    _velocity.y = _wallLeapJump.y;
+                    _waitWall = _wallJumpTime;
+                }
+            }
+            //NORMAL JUMP
+            if(_controller._state.CollisionBelow) {
+                _anim.SetTrigger("Jump");
+                _velocity.y = _jumpVelocity;
+            }
+        }
+    }
+    //MOVE METHOD
+    void MoveMethod() {
+        //RESET SMOOTHING VELOCITY X
+        if(_waitWall >= 0f) {
+            _refVelocityX = 0f;
+            _waitWall -= Time.deltaTime;
+        }
+        //KNOCK BACK
+        if(_knockBackTime > 0) {
+            if(_knockBackRight)
+                _velocity = new Vector3(-_knockBackVelocity.x, _knockBackVelocity.y);
+            else
+                _velocity = new Vector3(_knockBackVelocity.x, _knockBackVelocity.y);
+            _controller.Move(_velocity * Time.deltaTime);
+            _knockBackTime -= Time.deltaTime;
+            return;
+        }
+        //VELOCITY X
+        _velocity.x = Mathf.SmoothDamp(_velocity.x, Input.GetAxis("Horizontal") * _playerSpeed, ref _refVelocityX, _controller._state.CollisionBelow ? _smoothingInGround : _smoothingInFlight);
+        //GRAVITATION
+        _velocity.y -= _gravity * Time.deltaTime;
+        //
+        _controller.Move(_velocity * Time.deltaTime);
+    }    
+    //RESPAWN PLAYER
+    IEnumerator RespawnPlayer() {
+        //LOAD RESPAWN POSITION
+        Vector3 pos = LevelManager.GetCheckPoint();
+        //RETURN 
+        yield return new WaitForSeconds(_respawnTime);
+        //RESPAWN POS
+        transform.position = pos;
+        //MAX HEALTH
+        AddLifeHealth(0, _maxHealth);
+        //RESTART BASE PARAMETERS
+        _knockBackTime = _refVelocityX = _velocity.x = 0f;
+        //PALYER NOT DEATH
+        _playerIsDeath = false;
+    }    
+    public void AddLifeHealth(int life = 0, int healt = 0) {
+        _life += life;
+        _health += healt;
+    }
+    public void SetVelocity(Vector2 setVelocity) {
+        _velocity = setVelocity;
+        _refVelocityX = setVelocity.x;    
+    }
+   
+}
