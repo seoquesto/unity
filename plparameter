@@ -1,0 +1,32 @@
+
+public class Player2DParameters : MonoBehaviour {
+
+    public float _playerSpeed = 7;
+    public float _playerJumpTime = 0.4f;
+    public float _playerJumpHigh = 4f;
+    public float _smoothingInGround = 0.08f;
+    public float _smoothingInFlight = 0.15f;
+    public float wallSildeSpeed = 3f;
+    public Vector2 _wallLeapJump = new Vector2(15f, 17f);
+    public Vector2 _wallOffJump = new Vector2(7f, 14f);
+    [Header("KNOCKBACK")]
+    public float _knockBackLenght = 0.06f;
+    public Vector2 _knockBackVelocity = new Vector2(6f, 10f);
+    public float _knockBackTime { get; set; }
+    public bool _knockBackRight { get; set; }
+    [Header("LIFE")]
+    public int _maxHealth = 100;
+    public int _maxLife = 3;
+    public float _respawnTime = 1f;
+
+    protected int  _health;
+    protected int _life;
+    protected bool _playerIsDeath;
+    protected const float _wallJumpTime = 0.1f;
+    protected float _gravity;
+    protected float _jumpVelocity;
+    protected float _waitWall;
+    protected float _refVelocityX;
+    protected Vector3 _velocity;
+    protected CharacterController2D _controller;
+}
