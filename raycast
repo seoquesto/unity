@@ -1,0 +1,57 @@
+
+[RequireComponent(typeof(BoxCollider2D))]
+public class RaycastController2D : MonoBehaviour {
+
+    public float _skinWidth = 0.1f;
+    public int _totalHorizontalCount = 6;
+    public int _totalVerticalCount = 6;
+    public Color _originColor = Color.magenta;
+    public Color _hitColor = Color.green;
+    public Color _lackColor = Color.red;
+
+    protected float _horizontalSpacing;
+    protected float _verticalSpacing;
+
+    private BoxCollider2D _collider;
+
+    protected RayOrigin _origin;
+
+    protected virtual void Start() {
+        _collider = GetComponent<BoxCollider2D>();
+        CalculateSpacing();
+    }
+    private void CalculateSpacing() {
+        Bounds b = _collider.bounds;
+        b.Expand(-2 * _skinWidth);
+
+        _totalHorizontalCount = Mathf.Clamp(_totalHorizontalCount, 2, int.MaxValue);
+        _totalVerticalCount = Mathf.Clamp(_totalVerticalCount, 2, int.MaxValue);
+
+        _horizontalSpacing = b.size.y / (_totalHorizontalCount - 1);
+        _verticalSpacing = b.size.x / ( _totalVerticalCount - 1 );
+    }
+    protected void UpdateRayOrigin() {
+        Bounds b = _collider.bounds;
+        b.Expand(-2 * _skinWidth);
+
+        _origin._bottomLeft = new Vector2(b.min.x, b.min.y);
+        _origin._bottomRight = new Vector2(b.max.x, b.min.y);
+        _origin._topLeft = new Vector2(b.min.x, b.max.y);
+        _origin._topRight = new Vector2(b.max.x, b.max.y);
+    }                                        
+    protected struct RayOrigin {
+        public Vector2 _bottomLeft,
+                       _bottomRight,
+                       _topLeft,
+                       _topRight;
+    }
+    void OnDrawGizmos() {
+        if(!Application.isPlaying) return;
+        if(!Application.isEditor) return;
+        Gizmos.color = _originColor;
+        Gizmos.DrawSphere(_origin._bottomLeft, 0.07f);
+        Gizmos.DrawSphere(_origin._bottomRight, 0.07f);
+        Gizmos.DrawSphere(_origin._topLeft, 0.07f);
+        Gizmos.DrawSphere(_origin._topRight, 0.07f);        
+    }
+}
