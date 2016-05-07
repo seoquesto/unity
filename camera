@@ -1,0 +1,34 @@
+
+public class CameraController : MonoBehaviour {
+
+    private Vector3 _playerVector;
+    public Vector3 _smoothing;
+    public Vector3 _margin;
+    public BoxCollider2D _collder;
+    private Vector2 _max, _min;
+    private Camera _camera;                          
+    // Update is called once per frame
+    void Start() {
+        _camera = GetComponent<Camera>();
+        Bounds b = _collder.bounds;
+        _max = new Vector2(b.max.x, b.max.y);
+        _min = new Vector2(b.min.x, b.min.y);
+    }
+    void Update () {
+        _playerVector = GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>().position;
+        float x = transform.position.x;
+        float y = transform.position.y;
+	    if(Mathf.Abs(x - _playerVector.x) > _margin.x){
+            x = Mathf.Lerp(x, _playerVector.x, _smoothing.x * Time.deltaTime);
+        }
+        if(Mathf.Abs(y - _playerVector.y) >_margin.y) {
+            y = Mathf.Lerp(y, _playerVector.y, _smoothing.y * Time.deltaTime);           
+        }
+
+        float cameraHalfWidth = _camera.orthographicSize * ((float)Screen.width / Screen.height);
+        x = Mathf.Clamp(x, _min.x + cameraHalfWidth, _max.x - cameraHalfWidth);
+        y = Mathf.Clamp(y, _min.y + _camera.orthographicSize, _max.y - _camera.orthographicSize);
+
+        transform.position = new Vector3(x, y, -10f);
+	}
+}
